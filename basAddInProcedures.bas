@@ -1432,7 +1432,6 @@ Public Function GetADOConnectionString(stringODBCConnectionString As String) As 
     If InStr(stringODBCConnectionString, "Trusted_Connection=Yes") > 0 Then
         GetADOConnectionString = "Provider=SQLOLEDB;Data Source=" & stringServer & ";Initial Catalog=" & stringDatabase & ";Trusted_Connection=Yes;"
     Else
-        'Provider=SQLOLEDB;Data Source=sql2003.shared-servers.com, 1086;Initial Catalog=ETS;UID=fisicademo;PWD=!bc23?;
         Dim stringFormName As String: stringFormName = "Login"
         If Not IsLoaded(stringFormName) Then
             DoCmd.Close acForm, stringFormName, acSaveYes

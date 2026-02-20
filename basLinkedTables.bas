@@ -235,7 +235,6 @@ dbCurrent.TableDefs.Refresh
         '                    ";Trusted_Connection=Yes;"
         
         Set tdfCurrent = dbCurrent.CreateTableDef(typNewTables(intLoop).TableName)
-        'tdfCurrent.connect = "ODBC;DRIVER={Oracle in ODACHome1};SERVER=XE;UID=bms;PWD=qwe;DBQ=XE;DBA=W;APA=T;EXC=F;XSM=Default;FEN=T;QTO=T;FRC=10;FDL=10;LOB=T;RST=T;BTD=F;BAM=IfAllSuccessful;NUM=NLS;DPM=F;MTS=T;MDI=Me;CSR=F;FWC=F;FBS=60000;TLO=O;;TABLE=BMS.BMS_ACTIVE_JOB_DETAILS"
         tdfCurrent.Connect = "ODBC;DRIVER={Oracle in ODACHome1};" _
         & "SERVER=" & ServerName _
         & ";UID=" & strUser _
