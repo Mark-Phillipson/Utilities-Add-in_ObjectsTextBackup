@@ -1,0 +1,5 @@
+SELECT zsysDirectoriesSelected.Directory
+FROM zsysDirectoriesSelected
+GROUP BY zsysDirectoriesSelected.Directory
+ORDER BY zsysDirectoriesSelected.Directory;
+

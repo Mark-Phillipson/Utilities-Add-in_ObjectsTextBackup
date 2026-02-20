@@ -1,0 +1,4 @@
+SELECT ObjectPropertiesRowSources.ID, ObjectPropertiesRowSources.RowSource
+FROM ObjectPropertiesRowSources
+ORDER BY ObjectPropertiesRowSources.RowSource;
+

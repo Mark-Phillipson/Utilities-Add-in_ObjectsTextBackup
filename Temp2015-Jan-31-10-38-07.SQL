@@ -1,0 +1,3 @@
+SELECT [CustomersFinal].*
+FROM CustomersFinal;
+

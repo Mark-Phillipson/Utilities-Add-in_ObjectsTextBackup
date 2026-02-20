@@ -1,0 +1,3 @@
+SELECT [QueryDatabaseNames].*
+FROM QueryDatabaseNames;
+

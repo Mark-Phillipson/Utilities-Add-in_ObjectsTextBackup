@@ -1,0 +1,3 @@
+SELECT tmpRowsAndColumns.*
+FROM tmpRowsAndColumns;
+

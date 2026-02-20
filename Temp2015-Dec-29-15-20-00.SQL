@@ -1,0 +1,3 @@
+SELECT [TimeComparisons].*
+FROM TimeComparisons;
+
