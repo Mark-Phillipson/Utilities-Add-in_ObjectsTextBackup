@@ -63,6 +63,48 @@ Public Function TestFixedConnections()
     FixConnections "fgw4hyydwy.database.windows.net, 1433", "db_e811a279_8f27_472a_9bbd_af0dd58a6438", "db_e811a279_8f27_472a_9bbd_af0dd58a6438_ExternalWriter" _
     , "BZrTY0XZeJ6O9zD", "ODBC Driver 13 for SQL Server"
 End Function
+
+Private Function CanOpenSqlConnection(ByVal strConnectionString As String, Optional ByRef strError As String = "") As Boolean
+  Dim connection As ADODB.Connection
+  Dim strAdoConnectionString As String
+
+  On Error GoTo CanOpenSqlConnection_Error
+
+  strAdoConnectionString = strConnectionString
+  If UCase$(Left$(strAdoConnectionString, 5)) = "ODBC;" Then
+    strAdoConnectionString = "Provider=MSDASQL.1;" & Mid$(strAdoConnectionString, 6)
+  End If
+
+  Set connection = New ADODB.Connection
+  connection.ConnectionTimeout = 5
+  connection.Open strAdoConnectionString
+
+  CanOpenSqlConnection = True
+
+CanOpenSqlConnection_Exit:
+  On Error Resume Next
+  If Not connection Is Nothing Then
+    If connection.State <> adStateClosed Then connection.Close
+  End If
+  Set connection = Nothing
+  Exit Function
+
+CanOpenSqlConnection_Error:
+  strError = Err.Description & " (" & Err.Number & ")"
+  CanOpenSqlConnection = False
+  Resume CanOpenSqlConnection_Exit
+End Function
+
+Private Function TableDefExists(ByVal dbCurrent As DAO.Database, ByVal strTableName As String) As Boolean
+  Dim tdf As DAO.TableDef
+
+  On Error Resume Next
+  Set tdf = dbCurrent.TableDefs(strTableName)
+  TableDefExists = (Err.Number = 0)
+  Err.Clear
+  Set tdf = Nothing
+End Function
+
 Sub FixConnections(ServerName As String, DatabaseName As String, Optional strTable As String = "All", Optional booleanTrusted As Boolean = True _
 , Optional stringUser As String = "", Optional stringPassword As String = "", _
 Optional stringODBCDriverName As String = "ODBC Driver 13 for SQL Server", Optional blnAlwaysRemovePrefixCheckBox As Boolean = True, _
@@ -107,6 +149,11 @@ Dim strConnectionString As String
 Dim strDescription As String
 Dim strQdfConnect As String
 Dim typNewTables() As TableDetails
+Dim strConnectionError As String
+Dim intResponse As VbMsgBoxResult
+Dim blnCurrentTableRenamed As Boolean
+Dim strRenamedFrom As String
+Dim strRenamedTo As String
 
 ' Start by checking whether using Trusted Connection or SQL Server Security
 
@@ -138,6 +185,25 @@ Dim typNewTables() As TableDetails
   intToChange = 0
 
   Set dbCurrent = DBEngine.Workspaces(0).Databases(0)
+
+  ' Confirm SQL Server is reachable before changing any links.
+  Do
+    If CanOpenSqlConnection(strConnectionString, strConnectionError) Then
+        Exit Do
+    End If
+
+    intResponse = MsgBox("Unable to connect to SQL Server." & vbCrLf & vbCrLf & _
+        "Server: " & ServerName & vbCrLf & _
+        "Database: " & DatabaseName & vbCrLf & _
+        "Details: " & strConnectionError & vbCrLf & vbCrLf & _
+        "Choose Retry to try again now, or Cancel to stop and try later.", _
+        vbRetryCancel + vbExclamation, "Fix Connections")
+
+    If intResponse = vbCancel Then
+        MsgBox "Fix Connections cancelled. No linked table names were changed.", vbInformation, "Fix Connections"
+        GoTo End_FixConnections
+    End If
+  Loop
 
 ' Build a list of all of the connected TableDefs and
 ' the tables to which they're connected.
@@ -171,8 +237,13 @@ Dim typNewTables() As TableDetails
 'Rename the existing table
     Dim tdfExisting As DAO.tableDef
     Set tdfExisting = dbCurrent.TableDefs(typNewTables(intLoop).TableName)
-    
-    tdfExisting.Name = typNewTables(intLoop).TableName & "~Old~"
+
+    blnCurrentTableRenamed = False
+    strRenamedFrom = typNewTables(intLoop).TableName
+    strRenamedTo = typNewTables(intLoop).TableName & "~Old~"
+
+    tdfExisting.Name = strRenamedTo
+    blnCurrentTableRenamed = True
 ' Create a new TableDef object, using the DSN-less connection
 
     Set tdfCurrent = dbCurrent.CreateTableDef(typNewTables(intLoop).TableName)
@@ -197,7 +268,8 @@ Dim typNewTables() As TableDetails
     dbCurrent.TableDefs.Append tdfCurrent
 
     ' Delete the existing TableDef object
-    dbCurrent.TableDefs.Delete typNewTables(intLoop).TableName & "~Old~"
+    dbCurrent.TableDefs.Delete strRenamedTo
+    blnCurrentTableRenamed = False
 
 
 ' Where it existed, add the Description property to the new table.
@@ -241,6 +313,16 @@ End_FixConnections:
   Exit Sub
 
 Err_FixConnections:
+
+  If blnCurrentTableRenamed Then
+    On Error Resume Next
+    If TableDefExists(dbCurrent, strRenamedTo) And Not TableDefExists(dbCurrent, strRenamedFrom) Then
+      dbCurrent.TableDefs(strRenamedTo).Name = strRenamedFrom
+    End If
+    blnCurrentTableRenamed = False
+    On Error GoTo Err_FixConnections
+  End If
+
 ' Specific error trapping added for Error 3291
 ' (Syntax error in CREATE INDEX statement.), since that's what many
 ' people were encountering with the old code.
